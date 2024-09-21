@@ -8,7 +8,7 @@ const {
 OauthController.OauthHandShake = async (req, res) => {
   try {
     res.send({
-      authUrl: `https://github.com/login/oauth/authorize?client_id=${process.env.CLIENT_ID}`,
+      authUrl: `https://github.com/login/oauth/authorize?client_id=${process.env.CLIENT_ID}&scope=repo read:org user`,
     });
   } catch (error) {
     console.log(error, "HandShake error");
@@ -84,5 +84,35 @@ OauthController.detachSession = async (req, res) => {
     console.log(error, "HandShake error");
   }
 };
+OauthController.fetchAllOrganizations = async (req, res) =>{
+  try {
+    const token = req.headers.authorization; // Assuming token is passed in header
+    const orgsResponse = await axios.get('https://api.github.com/user/orgs', {
+      headers: { "Authorization": `${token}`,
+      "Accept": "application/vnd.github+json",
+       "X-GitHub-Api-Version": "2022-11-28" }
+    });
+    res.json(orgsResponse.data);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+// Fetch repositories for a specific organization
+OauthController.fetchAllOrganizationsRepos = async (req, res) =>{
+  try {
+    const token = req.headers.authorization;
+    const org = req.params.org;
+    const reposResponse = await axios.get(`https://api.github.com/orgs/${org}/repos`, {
+      headers: { "Authorization": `${token}`,
+      "Accept": "application/vnd.github+json",
+       "X-GitHub-Api-Version": "2022-11-28" }
+    });
+    res.json(reposResponse.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 module.exports = OauthController;
