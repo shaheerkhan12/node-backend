@@ -114,5 +114,36 @@ OauthController.fetchAllOrganizationsRepos = async (req, res) =>{
     res.status(500).json({ error: error.message });
   }
 }
+OauthController.fetchAllOrganizationsReposDataStats = async (req, res) =>{
+  const { org, repo } = req.params;
+  const token = req.headers.authorization;
 
+  const githubHeaders = {
+    headers: {
+      Authorization: `${token}`,
+      Accept: 'application/vnd.github.v3+json',
+    },
+  };
+  console.log(org, repo,token);
+  const repoUrl = `https://api.github.com/repos/${org}/${repo}`;
+
+  try {
+    // Fetch commits, pull requests, and issues concurrently
+    const [commits, pulls, issues] = await Promise.all([
+      axios.get(`${repoUrl}/commits`, githubHeaders),
+      axios.get(`${repoUrl}/pulls?state=all`, githubHeaders),
+      axios.get(`${repoUrl}/issues?state=all`, githubHeaders),
+    ]);
+
+    // Return the data in a combined format
+    res.json({
+      commits: commits.data,
+      pulls: pulls.data,
+      issues: issues.data,
+    });
+  } catch (error) {
+    console.error('Error fetching GitHub data:', error.message);
+    res.status(500).json({ error: 'Failed to fetch GitHub data' });
+  }
+}
 module.exports = OauthController;

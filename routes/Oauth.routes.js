@@ -11,5 +11,6 @@ router.get("/userdetails", OauthController.userDetails);
 
 router.get("/gitOrgans", OauthController.fetchAllOrganizations);
 router.get("/gitOrgans/:org/repos", OauthController.fetchAllOrganizationsRepos);
+router.get("/gitOrgans/repo/:org/:repo", OauthController.fetchAllOrganizationsReposDataStats)
 
 module.exports = router;
