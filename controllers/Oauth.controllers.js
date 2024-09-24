@@ -2,7 +2,7 @@ const OauthController = {};
 const axios = require("axios");
 // const userModel = require("../modeks")
 const {
-  storeUserInDB,deleteUserFromDB
+  storeUserInDB,deleteUserFromDB,processUserContributions
 } = require("./../helpers/Oauth.helper");
 
 OauthController.OauthHandShake = async (req, res) => {
@@ -103,43 +103,64 @@ OauthController.fetchAllOrganizations = async (req, res) =>{
 OauthController.fetchAllOrganizationsRepos = async (req, res) =>{
   try {
     const token = req.headers.authorization;
-    const org = req.params.org;
-    const reposResponse = await axios.get(`https://api.github.com/orgs/${org}/repos`, {
-      headers: { "Authorization": `${token}`,
-      "Accept": "application/vnd.github+json",
-       "X-GitHub-Api-Version": "2022-11-28" }
+    const { orgs } = req.body;
+    const repoPromises = orgs.map(org => {
+      return axios.get(`https://api.github.com/orgs/${org}/repos`, {
+          headers: {
+              "Authorization": `${token}`,
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28"
+          }
+      });
     });
-    res.json(reposResponse.data);
+    const reposResponses = await Promise.all(repoPromises);
+    const combinedRepos = reposResponses.flatMap(response => response.data);
+    res.json(combinedRepos);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 }
 OauthController.fetchAllOrganizationsReposDataStats = async (req, res) =>{
-  const { org, repo } = req.params;
+  const { list } = req.body
   const token = req.headers.authorization;
-
+  const userStatsMap = {};
   const githubHeaders = {
     headers: {
       Authorization: `${token}`,
       Accept: 'application/vnd.github.v3+json',
     },
   };
-  console.log(org, repo,token);
-  const repoUrl = `https://api.github.com/repos/${org}/${repo}`;
+  console.log(list,token);
 
   try {
     // Fetch commits, pull requests, and issues concurrently
-    const [commits, pulls, issues] = await Promise.all([
-      axios.get(`${repoUrl}/commits`, githubHeaders),
-      axios.get(`${repoUrl}/pulls?state=all`, githubHeaders),
-      axios.get(`${repoUrl}/issues?state=all`, githubHeaders),
-    ]);
-
+    const fetchRepoStats = async (item) => {
+      const repoUrl = `https://api.github.com/repos/${item.org}/${item.repo}`;
+    
+      const [commits, pulls, issues] = await Promise.all([
+        axios.get(`${repoUrl}/commits`, githubHeaders),
+        axios.get(`${repoUrl}/pulls?state=all`, githubHeaders),
+        axios.get(`${repoUrl}/issues?state=all`, githubHeaders),
+      ]);
+    
+      return { commits: commits.data, pulls: pulls.data, issues: issues.data };
+    };
+    
+    const repoStatsPromises = list.map(fetchRepoStats);
+    
+    // Process contributions directly in a single pass
+    const reposResponses = await Promise.all(repoStatsPromises);
+    reposResponses.forEach(({ commits, pulls, issues }) => {
+      processUserContributions(commits, userStatsMap, 'commit');
+      processUserContributions(pulls, userStatsMap, 'pullRequest');
+      processUserContributions(issues, userStatsMap, 'issue');
+    });
+    
     // Return the data in a combined format
+    const objectiveBrowData = Object.values(userStatsMap);
+    
     res.json({
-      commits: commits.data,
-      pulls: pulls.data,
-      issues: issues.data,
+      objectiveBrowData
     });
   } catch (error) {
     console.error('Error fetching GitHub data:', error.message);

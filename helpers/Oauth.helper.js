@@ -49,5 +49,35 @@ function determineSyncType(lastSyncTime) {
         return timeSinceLastSync > 24 * 60 * 60 * 1000 ? 'full' : 'incremental';
     }
 }
+function processUserContributions(contributions, userStatsMap, type) {
+    for (const contribution of contributions) {
+      const userId = contribution.author?.id || contribution.user?.id;
+      const userLogin = contribution.author?.login || contribution.user?.login;
+  
+      if (!userId) continue;
+  
+      if (!userStatsMap[userId]) {
+        userStatsMap[userId] = {
+          userId,
+          userLogin,
+          totalCommits: 0,
+          totalPullRequests: 0,
+          totalIssues: 0,
+        };
+      }
+  
+      switch (type) {
+        case 'commit':
+          userStatsMap[userId].totalCommits += 1;
+          break;
+        case 'pullRequest':
+          userStatsMap[userId].totalPullRequests += 1;
+          break;
+        case 'issue':
+          userStatsMap[userId].totalIssues += 1;
+          break;
+      }
+    }
+}
 
-module.exports = {  storeUserInDB,deleteUserFromDB };
+module.exports = {  storeUserInDB,deleteUserFromDB ,processUserContributions};

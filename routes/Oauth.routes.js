@@ -10,7 +10,7 @@ router.post("/detach-session", OauthController.detachSession);
 router.get("/userdetails", OauthController.userDetails);
 
 router.get("/gitOrgans", OauthController.fetchAllOrganizations);
-router.get("/gitOrgans/:org/repos", OauthController.fetchAllOrganizationsRepos);
-router.get("/gitOrgans/repo/:org/:repo", OauthController.fetchAllOrganizationsReposDataStats)
+router.post("/gitOrgans/repos", OauthController.fetchAllOrganizationsRepos);
+router.post("/gitOrgans/repo", OauthController.fetchAllOrganizationsReposDataStats)
 
 module.exports = router;
